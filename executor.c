@@ -4,6 +4,7 @@
 #include "stdio.h"
 #include "stdlib.h"
 #include "string.h"
+#include "limits.h"
 
 int execute_command(char** argv) {
     pid_t pid = fork();
@@ -62,9 +63,20 @@ static int builtin_cd(char **argv) {
 }
 
 static int builtin_exit(char **argv) {
-    return -1;
+    (void)argv;
+    exit(EXIT_SUCCESS);
+    return EXIT_SUCCESS;
 }
 
 static int builtin_pwd(char **argv) {
-    return -1;
+    (void)argv;
+    char buf[PATH_MAX];
+
+    if (getcwd(buf, PATH_MAX)==NULL) {
+        perror("Get cwd failed");
+        return EXIT_FAILURE;
+    }
+    printf("%s\n", buf);
+    return EXIT_SUCCESS;
+
 }
