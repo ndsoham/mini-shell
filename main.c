@@ -14,7 +14,9 @@ int main() {
         fflush(stdout);
         if (fgets(line, MAX_LINE, input) == NULL) break;
         parse_input(line, argv, MAX_ARGS);
-        execute_command(argv);
+        if(!execute_builtin(argv)) {
+            execute_command(argv);
+        }
     }
 
     return EXIT_SUCCESS;
