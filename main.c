@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include "parser.h"
+#include "executor.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -12,12 +13,8 @@ int main() {
         printf("mysh> ");
         fflush(stdout);
         if (fgets(line, MAX_LINE, input) == NULL) break;
-        int num_tokens = parse_input(line, argv, MAX_ARGS);
-
-        for(int i = 0; i < num_tokens; i++) {
-            printf("[%d]: %s\n", i, argv[i]);
-        }
-
+        parse_input(line, argv, MAX_ARGS);
+        execute_command(argv);
     }
 
     return EXIT_SUCCESS;
