@@ -1,10 +1,10 @@
 #include "executor.h"
-#include "unistd.h"
-#include "sys/wait.h"
-#include "stdio.h"
-#include "stdlib.h"
-#include "string.h"
-#include "limits.h"
+#include <unistd.h>
+#include <sys/wait.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <limits.h>
 
 int execute_command(char** argv) {
     pid_t pid = fork();
@@ -24,27 +24,7 @@ int execute_command(char** argv) {
         }
         return EXIT_SUCCESS;
     }
-    return EXIT_FAILURE;
     
-}
-
-int execute_builtin(char** argv) {
-    if (strcmp(argv[0], "cd") == 0) {
-        builtin_cd(argv);
-        return 1;
-    }
-
-    if (strcmp(argv[0], "exit") == 0) {
-        builtin_exit(argv);
-        return 1;
-    }
-
-    if (strcmp(argv[0], "pwd") == 0) {
-        builtin_pwd(argv);
-        return 1;
-    }
-
-    return 0;
 }
 
 static int builtin_cd(char **argv) {
@@ -79,4 +59,23 @@ static int builtin_pwd(char **argv) {
     printf("%s\n", buf);
     return EXIT_SUCCESS;
 
+}
+
+int execute_builtin(char** argv) {
+    if (strcmp(argv[0], "cd") == 0) {
+        builtin_cd(argv);
+        return 1;
+    }
+
+    if (strcmp(argv[0], "exit") == 0) {
+        builtin_exit(argv);
+        return 1;
+    }
+
+    if (strcmp(argv[0], "pwd") == 0) {
+        builtin_pwd(argv);
+        return 1;
+    }
+
+    return 0;
 }
