@@ -18,13 +18,19 @@ int execute_command(Command cmd) {
         if (cmd.input_file) {
             int fd = open(cmd.input_file, O_RDONLY);
 
+            if (fd == -1) {
+                perror("open failed for STDIN");
+                exit(EXIT_FAILURE);
+            }
+
             if (dup2(fd, STDIN_FILENO) == -1) {
                 perror("Dup2 failed for STDIN");
+                exit(EXIT_FAILURE);
             }
 
             if (close(fd) == -1) {
                 perror("Close failed for STDIN");
-                return EXIT_FAILURE;
+                exit(EXIT_FAILURE);
             }
         
         }
@@ -37,16 +43,20 @@ int execute_command(Command cmd) {
                 fd = open(cmd.output_file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
             }
 
+            if (fd == -1) {
+                perror("Open failed for STDOUT");
+                exit(EXIT_FAILURE);
+            }
+
             if (dup2(fd, STDOUT_FILENO) == -1) {
                 perror("Dup2 failed for STDOUT");
-                return EXIT_FAILURE;
+                exit(EXIT_FAILURE);
             }
 
             if (close(fd) == -1) {
                 perror("Close failed for STDOUT");
-                return EXIT_FAILURE;
+                exit(EXIT_FAILURE);
             }
-            
         }
 
         execvp(cmd.argv[0], cmd.argv);
