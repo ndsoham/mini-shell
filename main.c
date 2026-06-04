@@ -13,9 +13,10 @@ int main() {
         printf("mysh> ");
         fflush(stdout);
         if (fgets(line, MAX_LINE, input) == NULL) break;
-        parse_input(line, argv, MAX_ARGS);
-        if(!execute_builtin(argv)) {
-            execute_command(argv);
+        Command cmd = parse_input(line, argv, MAX_ARGS);
+        if (cmd.num_args == 0) continue;
+        if(!execute_builtin(cmd.argv)) {
+            execute_command(cmd);
         }
     }
 

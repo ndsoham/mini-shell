@@ -5,15 +5,51 @@
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
+#include <fcntl.h>
 
-int execute_command(char** argv) {
+int execute_command(Command cmd) {
     pid_t pid = fork();
 
     if (pid == -1) {
         perror("Error, fork failed");
         return EXIT_FAILURE;
     } else if (pid == 0) {
-        execvp(argv[0], argv);
+        
+        if (cmd.input_file) {
+            int fd = open(cmd.input_file, O_RDONLY);
+
+            if (dup2(fd, STDIN_FILENO) == -1) {
+                perror("Dup2 failed for STDIN");
+            }
+
+            if (close(fd) == -1) {
+                perror("Close failed for STDIN");
+                return EXIT_FAILURE;
+            }
+        
+        }
+
+        if (cmd.output_file) {
+            int fd;
+            if (cmd.append) {
+                fd = open(cmd.output_file, O_WRONLY | O_CREAT | O_APPEND, 0644);
+            } else {
+                fd = open(cmd.output_file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+            }
+
+            if (dup2(fd, STDOUT_FILENO) == -1) {
+                perror("Dup2 failed for STDOUT");
+                return EXIT_FAILURE;
+            }
+
+            if (close(fd) == -1) {
+                perror("Close failed for STDOUT");
+                return EXIT_FAILURE;
+            }
+            
+        }
+
+        execvp(cmd.argv[0], cmd.argv);
         perror("Error, execvp failed");
         exit(EXIT_FAILURE);
     } else {
