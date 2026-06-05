@@ -6,12 +6,17 @@
 // Returns the number of tokens, or 0 if the line is empty.
 
 typedef struct {
-    char **argv;
+    char *argv[MAX_ARGS];
     int num_args;
     char *input_file;   // NULL if no redirection
     char *output_file;  // NULL if no redirection
     int append;         // 1 if >>, 0 if >
 } Command;
 
-Command parse_input(char *line, char **argv, int max_args);
+typedef struct {
+    Command commands[MAX_ARGS];
+    int num_commands;
+} Pipeline;
+
+Pipeline parse_pipeline(char *line, int max_args);
 

@@ -1,9 +1,8 @@
 #include "parser.h"
 #include <string.h>
 #include <stdio.h>
-Command parse_input(char *line, char **argv, int max_args) {
-    
-    line[strcspn(line, "\n")] = '\0';
+
+static Command parse_single_command(char *line, int max_args) {
 
     Command cmd;
     cmd.input_file = NULL;
@@ -53,13 +52,37 @@ Command parse_input(char *line, char **argv, int max_args) {
             continue;
         }
 
-        argv[i++] = pch;
+        cmd.argv[i++] = pch;
         pch = strtok(NULL, delims);
     }
     
-    argv[i] = NULL;
-    cmd.argv = argv;
+    cmd.argv[i] = NULL;
     cmd.num_args = i;
-    
+
     return cmd;
 }
+
+Pipeline parse_pipeline(char *line, int max_args) {
+    line[strcspn(line, "\n")] = '\0';
+
+    Pipeline pipeline;
+    pipeline.num_commands = 0;
+
+    const char* pipe_char = "|";
+    char *pseg = strtok_r(line, pipe_char, &line);
+    int i = 0;
+
+    if (pseg == NULL) {
+        pipeline.num_commands = 1;
+        pipeline.commands[0] = parse_single_command(line, max_args);
+        return pipeline;
+    }
+
+    while (pseg != NULL && i < max_args - 1) {
+        pipeline.commands[i++] = parse_single_command(pseg, max_args);
+        pseg = strtok_r(NULL, pipe_char, &line);
+    }
+    pipeline.num_commands = i;
+    return pipeline;
+}
+
