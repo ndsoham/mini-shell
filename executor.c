@@ -6,70 +6,58 @@
 #include <string.h>
 #include <limits.h>
 #include <fcntl.h>
+#define READ 0
+#define WRITE 1
 
 int execute_command(Command cmd) {
-    pid_t pid = fork();
+    
+    if (cmd.input_file) {
+        int fd = open(cmd.input_file, O_RDONLY);
 
-    if (pid == -1) {
-        perror("Error, fork failed");
-        return EXIT_FAILURE;
-    } else if (pid == 0) {
-        
-        if (cmd.input_file) {
-            int fd = open(cmd.input_file, O_RDONLY);
-
-            if (fd == -1) {
-                perror("open failed for STDIN");
-                exit(EXIT_FAILURE);
-            }
-
-            if (dup2(fd, STDIN_FILENO) == -1) {
-                perror("Dup2 failed for STDIN");
-                exit(EXIT_FAILURE);
-            }
-
-            if (close(fd) == -1) {
-                perror("Close failed for STDIN");
-                exit(EXIT_FAILURE);
-            }
-        
+        if (fd == -1) {
+            perror("open failed for STDIN");
+            exit(EXIT_FAILURE);
         }
 
-        if (cmd.output_file) {
-            int fd;
-            if (cmd.append) {
-                fd = open(cmd.output_file, O_WRONLY | O_CREAT | O_APPEND, 0644);
-            } else {
-                fd = open(cmd.output_file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-            }
-
-            if (fd == -1) {
-                perror("Open failed for STDOUT");
-                exit(EXIT_FAILURE);
-            }
-
-            if (dup2(fd, STDOUT_FILENO) == -1) {
-                perror("Dup2 failed for STDOUT");
-                exit(EXIT_FAILURE);
-            }
-
-            if (close(fd) == -1) {
-                perror("Close failed for STDOUT");
-                exit(EXIT_FAILURE);
-            }
+        if (dup2(fd, STDIN_FILENO) == -1) {
+            perror("Dup2 failed for STDIN");
+            exit(EXIT_FAILURE);
         }
 
-        execvp(cmd.argv[0], cmd.argv);
-        perror("Error, execvp failed");
-        exit(EXIT_FAILURE);
-    } else {
-        int status;
-        if (waitpid(pid, &status, 0) == -1) {
-            perror("waitpid failed");
-            return EXIT_FAILURE;
+        if (close(fd) == -1) {
+            perror("Close failed for STDIN");
+            exit(EXIT_FAILURE);
         }
-        return EXIT_SUCCESS;
+    
     }
+
+    if (cmd.output_file) {
+        int fd;
+        if (cmd.append) {
+            fd = open(cmd.output_file, O_WRONLY | O_CREAT | O_APPEND, 0644);
+        } else {
+            fd = open(cmd.output_file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+        }
+
+        if (fd == -1) {
+            perror("Open failed for STDOUT");
+            exit(EXIT_FAILURE);
+        }
+
+        if (dup2(fd, STDOUT_FILENO) == -1) {
+            perror("Dup2 failed for STDOUT");
+            exit(EXIT_FAILURE);
+        }
+
+        if (close(fd) == -1) {
+            perror("Close failed for STDOUT");
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    execvp(cmd.argv[0], cmd.argv);
+    perror("Error, execvp failed");
+    exit(EXIT_FAILURE);
     
 }
 
@@ -124,4 +112,69 @@ int execute_builtin(char** argv) {
     }
 
     return 0;
+}
+
+int execute_pipeline(Pipeline pipeline) {
+    
+    int fds[pipeline.num_commands-1][2];
+    pid_t pids[pipeline.num_commands];
+
+    for (int i = 0; i < pipeline.num_commands - 1; i++) {
+        if (pipe(fds[i]) == -1) {
+            perror("Error, pipe failed.");
+            return EXIT_FAILURE;
+        }
+    }
+
+    for (int i = 0; i < pipeline.num_commands; i++) {
+        pid_t pid = fork();
+
+        if (pid == -1) {
+            perror("Error, fork failed.");
+            return EXIT_FAILURE;
+        } else if (pid == 0) {
+            
+            // redirect stdin for everyone except the first
+            if (i > 0) {
+                pipeline.commands[i].input_file = NULL;
+                dup2(fds[i-1][READ], STDIN_FILENO);
+            }
+
+            // redirect stdout for everyone except the last
+            if (i < pipeline.num_commands - 1) {
+                pipeline.commands[i].output_file = NULL;
+                dup2(fds[i][WRITE], STDOUT_FILENO);
+            }
+
+            for (int j = 0; j < pipeline.num_commands - 1; j++) {
+                if (close(fds[j][READ]) == -1 || close(fds[j][WRITE]) == -1){
+                    perror("Error, close failed in child.");
+                    exit(EXIT_FAILURE);
+                }
+            }
+
+            execute_command(pipeline.commands[i]);
+
+        } else {
+            pids[i] = pid;
+        }
+    }
+
+    for (int j = 0; j < pipeline.num_commands - 1; j++) {
+        if (close(fds[j][READ]) == -1 || close(fds[j][WRITE]) == -1){
+            perror("Error, close failed in parent.");
+            return EXIT_FAILURE;
+        }
+    }
+
+    for (int i = 0; i < pipeline.num_commands; i++) {
+        int status;
+        if (waitpid(pids[i], &status, 0) == -1) {
+            perror("Error, waitpid failed.");
+            return EXIT_FAILURE;
+        }
+    }
+
+    return EXIT_SUCCESS;
+
 }
