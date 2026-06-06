@@ -14,11 +14,10 @@ int main() {
         if (fgets(line, MAX_LINE, input) == NULL) break;
         Pipeline pipeline = parse_pipeline(line, MAX_ARGS);
         if (pipeline.num_commands == 0) continue;
+        if (pipeline.num_commands == 1 && execute_builtin(pipeline.commands[0].argv)) {
+                continue;
+        }
         execute_pipeline(pipeline);
-        
-        // if(!execute_builtin(cmd.argv)) {
-        //     execute_command(cmd);
-        // }
     }
 
     return EXIT_SUCCESS;

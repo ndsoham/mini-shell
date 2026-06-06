@@ -153,7 +153,11 @@ int execute_pipeline(Pipeline pipeline) {
                 }
             }
 
-            execute_command(pipeline.commands[i]);
+            if (!execute_builtin(pipeline.commands[i].argv)) {
+                execute_command(pipeline.commands[i]);
+            }
+            
+            exit(EXIT_SUCCESS);
 
         } else {
             pids[i] = pid;
