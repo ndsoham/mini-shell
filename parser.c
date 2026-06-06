@@ -69,18 +69,13 @@ Pipeline parse_pipeline(char *line, int max_args) {
     pipeline.num_commands = 0;
 
     const char* pipe_char = "|";
-    char *pseg = strtok_r(line, pipe_char, &line);
+    char* save_ptr;
+    char *pseg = strtok_r(line, pipe_char, &save_ptr);
     int i = 0;
-
-    if (pseg == NULL) {
-        pipeline.num_commands = 1;
-        pipeline.commands[0] = parse_single_command(line, max_args);
-        return pipeline;
-    }
 
     while (pseg != NULL && i < max_args - 1) {
         pipeline.commands[i++] = parse_single_command(pseg, max_args);
-        pseg = strtok_r(NULL, pipe_char, &line);
+        pseg = strtok_r(NULL, pipe_char, &save_ptr);
     }
     pipeline.num_commands = i;
     return pipeline;
