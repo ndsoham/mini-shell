@@ -3,10 +3,18 @@
 #include "executor.h"
 #include <stdlib.h>
 #include <string.h>
+#include <signal.h>
 
 int main() {
     FILE* input = stdin;
     char line[MAX_LINE];
+
+    struct sigaction sa;
+    sa.sa_handler = SIG_IGN;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+    sigaction(SIGINT, &sa, NULL);
+    sigaction(SIGTSTP, &sa, NULL);
 
     while(1) {
         printf("mysh> ");

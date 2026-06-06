@@ -6,6 +6,7 @@
 #include <string.h>
 #include <limits.h>
 #include <fcntl.h>
+#include <signal.h>
 #define READ 0
 #define WRITE 1
 
@@ -153,10 +154,17 @@ int execute_pipeline(Pipeline pipeline) {
                 }
             }
 
+            struct sigaction sa;
+            sa.sa_handler = SIG_DFL;
+            sigemptyset(&sa.sa_mask);
+            sa.sa_flags = 0;
+            sigaction(SIGINT, &sa, NULL);
+            sigaction(SIGTSTP, &sa, NULL);
+
             if (!execute_builtin(pipeline.commands[i].argv)) {
                 execute_command(pipeline.commands[i]);
             }
-            
+
             exit(EXIT_SUCCESS);
 
         } else {
