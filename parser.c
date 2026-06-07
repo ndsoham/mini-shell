@@ -84,6 +84,7 @@ Pipeline parse_pipeline(char *line, int max_args) {
         pseg = strtok_r(NULL, pipe_char, &save_ptr);
     }
     pipeline.num_commands = i;
+
     return pipeline;
 }
 
