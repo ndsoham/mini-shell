@@ -135,13 +135,16 @@ int execute_pipeline(Pipeline pipeline) {
             return EXIT_FAILURE;
         } else if (pid == 0) {
             
-            // redirect stdin for everyone except the first
+            if (setpgid(0, i > 0 ? pids[0] : 0) == -1) {
+                perror("Error, setpgid failed.");
+                exit(EXIT_FAILURE);
+            }
+
             if (i > 0) {
                 pipeline.commands[i].input_file = NULL;
                 dup2(fds[i-1][READ], STDIN_FILENO);
             }
 
-            // redirect stdout for everyone except the last
             if (i < pipeline.num_commands - 1) {
                 pipeline.commands[i].output_file = NULL;
                 dup2(fds[i][WRITE], STDOUT_FILENO);
@@ -169,6 +172,17 @@ int execute_pipeline(Pipeline pipeline) {
 
         } else {
             pids[i] = pid;
+
+            if (setpgid(pid, i > 0 ? pids[0] : pid) == -1) {
+                perror("Error, set pgid failed.");
+                return EXIT_FAILURE;
+            }
+
+            if (!pipeline.bg && i == 0 && tcsetpgrp(STDIN_FILENO, pid) == -1) {
+                perror("Error, tcsetgrp failed.");
+                return EXIT_FAILURE;
+            }
+
         }
     }
 
@@ -185,6 +199,10 @@ int execute_pipeline(Pipeline pipeline) {
             perror("Error, waitpid failed.");
             return EXIT_FAILURE;
         }
+    }
+
+    if (!pipeline.bg) {
+        tcsetpgrp(STDIN_FILENO, getpgrp());
     }
 
     return EXIT_SUCCESS;

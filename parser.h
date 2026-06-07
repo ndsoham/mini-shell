@@ -16,6 +16,7 @@ typedef struct {
 typedef struct {
     Command commands[MAX_ARGS];
     int num_commands;
+    int bg;
 } Pipeline;
 
 Pipeline parse_pipeline(char *line, int max_args);
