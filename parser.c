@@ -67,6 +67,7 @@ Pipeline parse_pipeline(char *line, int max_args) {
 
     Pipeline pipeline;
     pipeline.num_commands = 0;
+    pipeline.bg = 0;
 
     char *amp = strrchr(line, '&');
     if (amp != NULL) {

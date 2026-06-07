@@ -10,6 +10,9 @@
 #define READ 0
 #define WRITE 1
 
+Job jobs[MAX_JOBS];
+int num_jobs = 0;
+
 int execute_command(Command cmd) {
     
     if (cmd.input_file) {
@@ -115,7 +118,7 @@ int execute_builtin(char** argv) {
     return 0;
 }
 
-int execute_pipeline(Pipeline pipeline) {
+int execute_pipeline(Pipeline pipeline, char* line) {
     
     int fds[pipeline.num_commands-1][2];
     pid_t pids[pipeline.num_commands];
@@ -193,18 +196,34 @@ int execute_pipeline(Pipeline pipeline) {
         }
     }
 
+    if (pipeline.bg) {
+        jobs[num_jobs].id = num_jobs;
+        jobs[num_jobs].pgid = pids[0];
+        jobs[num_jobs].status = RUNNING;
+        strncpy(jobs[num_jobs].command, line, MAX_LINE);
+        num_jobs++;
+        printf("[%d] %d\n", num_jobs, pids[0]);
+        return EXIT_SUCCESS;
+    }
+
     for (int i = 0; i < pipeline.num_commands; i++) {
         int status;
-        if (waitpid(pids[i], &status, 0) == -1) {
+        if (waitpid(pids[i], &status, WUNTRACED) == -1) {
             perror("Error, waitpid failed.");
             return EXIT_FAILURE;
         }
+        if (WIFSTOPPED(status)) {
+            jobs[num_jobs].id = num_jobs;
+            jobs[num_jobs].pgid = pids[0];
+            jobs[num_jobs].status = STOPPED;
+            strncpy(jobs[num_jobs].command, line, MAX_LINE);
+            num_jobs++;
+            printf("\n[%d] Stopped\t%s\n", num_jobs, line);
+            break;
+        }
     }
 
-    if (!pipeline.bg) {
-        tcsetpgrp(STDIN_FILENO, getpgrp());
-    }
-
+    tcsetpgrp(STDIN_FILENO, getpgrp());
     return EXIT_SUCCESS;
 
 }
