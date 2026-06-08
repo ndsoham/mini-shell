@@ -11,6 +11,7 @@ typedef struct {
     char *input_file;   // NULL if no redirection
     char *output_file;  // NULL if no redirection
     int append;         // 1 if >>, 0 if >
+    int error;
 } Command;
 
 typedef struct {

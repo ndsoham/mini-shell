@@ -20,6 +20,7 @@ static Command parse_single_command(char *line, int max_args) {
             if (pch == NULL) {
                 fprintf(stderr, "mysh: syntax error: expected filename after >\n");
                 cmd.num_args = 0;
+                cmd.error = 1;
                 return cmd;
             }
             cmd.output_file = pch;
@@ -32,6 +33,7 @@ static Command parse_single_command(char *line, int max_args) {
             if (pch == NULL) {
                 fprintf(stderr, "mysh: syntax error: expected filename after >>\n");
                 cmd.num_args = 0;
+                cmd.error = 1;
                 return cmd;
             }
             cmd.output_file = pch;
@@ -45,6 +47,7 @@ static Command parse_single_command(char *line, int max_args) {
             if (pch == NULL) {
                 fprintf(stderr, "mysh: syntax error: expected filename after <\n");
                 cmd.num_args = 0;
+                cmd.error = 1;
                 return cmd;
             }
             cmd.input_file = pch;
@@ -81,7 +84,12 @@ Pipeline parse_pipeline(char *line, int max_args) {
     int i = 0;
 
     while (pseg != NULL && i < max_args - 1) {
-        pipeline.commands[i++] = parse_single_command(pseg, max_args);
+        Command cmd = parse_single_command(pseg, max_args);
+        if (cmd.num_args == 0 && cmd.error == 1) {
+            pipeline.num_commands = 0;
+            return pipeline;
+        }
+        pipeline.commands[i++] = cmd;
         pseg = strtok_r(NULL, pipe_char, &save_ptr);
     }
     pipeline.num_commands = i;
