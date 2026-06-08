@@ -127,6 +127,12 @@ static int builtin_fg(char **argv) {
                 return EXIT_FAILURE;
             }
 
+            sigset_t mask, prev;
+            sigemptyset(&mask);
+            sigaddset(&mask, SIGCHLD);
+            sigprocmask(SIG_BLOCK, &mask, &prev);
+
+
             if (kill(-jobs[i].pgid, SIGCONT) == -1) {
                 perror("kill failed.");
                 return EXIT_FAILURE;
@@ -147,7 +153,13 @@ static int builtin_fg(char **argv) {
                     printf("\n[%d] Stopped\t%s\n", jobs[i].id + 1, jobs[i].command);
                     break;
                 }
+                if (WIFEXITED(status) || WIFSIGNALED(status)) {
+                    jobs[i].status = DONE;
+                    break;
+                }
             }
+
+            sigprocmask(SIG_SETMASK, &prev, NULL);
 
             if (tcsetpgrp(STDIN_FILENO, getpgrp()) == -1) {
                 perror("tcsetpgrp failed.");
