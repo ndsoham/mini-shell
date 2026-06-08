@@ -5,6 +5,23 @@
 #include <string.h>
 #include <signal.h>
 
+void sigchld_handler(int signo) {
+    (void)signo;
+    int status;
+
+    for (int i = 0; i < num_jobs; i++) {
+        if (jobs[i].status == RUNNING) {
+            pid_t result = waitpid(-jobs[i].pgid, &status, WNOHANG | WUNTRACED);
+            if (result > 0) {
+                if (WIFEXITED(status) || WIFSIGNALED(status)) {
+                    jobs[i].status = DONE;
+                    printf("\n[%d] Done\t%s\n", jobs[i].id + 1, jobs[i].command);
+                }
+            }
+        }
+    }
+}
+
 int main() {
     FILE* input = stdin;
     char line[MAX_LINE];
@@ -17,6 +34,12 @@ int main() {
     sigaction(SIGINT, &sa, NULL);
     sigaction(SIGTSTP, &sa, NULL);
     sigaction(SIGTTOU, &sa, NULL);
+
+    struct sigaction sa_chld;
+    sa_chld.sa_handler = sigchld_handler;
+    sigemptyset(&sa_chld.sa_mask);
+    sa.sa_flags = SA_RESTART;
+    sigaction(SIGCHLD, &sa_chld, NULL);
 
     while(1) {
         printf("mysh> ");
@@ -34,3 +57,4 @@ int main() {
     return EXIT_SUCCESS;
 
 }
+

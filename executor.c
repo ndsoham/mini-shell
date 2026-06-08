@@ -99,6 +99,17 @@ static int builtin_pwd(char **argv) {
 
 }
 
+static int builtin_jobs(char **argv) {
+    (void)argv;
+    for (int i = 0; i < num_jobs; i++) {
+        if (jobs[i].status != DONE) {
+            char *status_str = jobs[i].status == RUNNING ? "Running" : "Stopped";
+            printf("[%d] %s\t%s\n", jobs[i].id + 1, status_str, jobs[i].command);
+        }
+    }
+    return EXIT_SUCCESS;
+}
+
 int execute_builtin(char** argv) {
     if (strcmp(argv[0], "cd") == 0) {
         builtin_cd(argv);
@@ -112,6 +123,11 @@ int execute_builtin(char** argv) {
 
     if (strcmp(argv[0], "pwd") == 0) {
         builtin_pwd(argv);
+        return 1;
+    }
+
+    if (strcmp(argv[0], "jobs") == 0) {
+        builtin_jobs(argv);
         return 1;
     }
 
