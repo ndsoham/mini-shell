@@ -7,6 +7,7 @@
 #include <limits.h>
 #include <fcntl.h>
 #include <signal.h>
+#include <errno.h>
 #define READ 0
 #define WRITE 1
 
@@ -110,6 +111,65 @@ static int builtin_jobs(char **argv) {
     return EXIT_SUCCESS;
 }
 
+static int builtin_fg(char **argv) {
+    if (argv[1] == NULL) {
+        fprintf(stderr, "fg: missing job id\n");
+        return EXIT_FAILURE;
+    }
+
+    int job_id = atoi(argv[1] + 1) - 1;
+    int found = 0;
+    for (int i = 0; i < num_jobs; i++) {
+        if (jobs[i].id == job_id && jobs[i].status == STOPPED) {
+            found = 1;
+            if(tcsetpgrp(STDIN_FILENO, jobs[i].pgid) == -1) {
+                perror("tcsetpgrp failed.");
+                return EXIT_FAILURE;
+            }
+
+            if (kill(-jobs[i].pgid, SIGCONT) == -1) {
+                perror("kill failed.");
+                return EXIT_FAILURE;
+            }
+
+            jobs[i].status = RUNNING;
+
+            while(1) {
+                int status;
+                pid_t pid = waitpid(-jobs[i].pgid, &status, WUNTRACED);
+                if (pid == -1) {
+                    if (errno == ECHILD) break;
+                    perror("waitpid failed");
+                    break;
+                }
+                if (WIFSTOPPED(status)) {
+                    jobs[i].status = STOPPED;
+                    printf("\n[%d] Stopped\t%s\n", jobs[i].id + 1, jobs[i].command);
+                    break;
+                }
+            }
+
+            if (tcsetpgrp(STDIN_FILENO, getpgrp()) == -1) {
+                perror("tcsetpgrp failed.");
+                return EXIT_FAILURE;
+            }
+
+            break;
+        }
+    }
+
+    if (!found) {
+        fprintf(stderr, "fg: job %d not found\n", job_id + 1);
+    }
+
+    return EXIT_SUCCESS;
+
+}
+
+static int builtin_bg(char ** argv) {
+    
+}
+
 int execute_builtin(char** argv) {
     if (strcmp(argv[0], "cd") == 0) {
         builtin_cd(argv);
@@ -128,6 +188,16 @@ int execute_builtin(char** argv) {
 
     if (strcmp(argv[0], "jobs") == 0) {
         builtin_jobs(argv);
+        return 1;
+    }
+
+    if (strcmp(argv[0], "fg") == 0) {
+        builtin_fg(argv);
+        return 1;
+    }
+
+    if (strcmp(argv[0], "bg") == 0) {
+        builtin_bg(argv);
         return 1;
     }
 
@@ -239,7 +309,11 @@ int execute_pipeline(Pipeline pipeline, char* line) {
         }
     }
 
-    tcsetpgrp(STDIN_FILENO, getpgrp());
+    if (tcsetpgrp(STDIN_FILENO, getpgrp()) == -1) {
+        perror("Error, tcsetpgrp failed.");
+        return EXIT_FAILURE;
+    }
+
     return EXIT_SUCCESS;
 
 }
