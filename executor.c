@@ -120,7 +120,7 @@ static int builtin_fg(char **argv) {
     int job_id = atoi(argv[1] + 1) - 1;
     int found = 0;
     for (int i = 0; i < num_jobs; i++) {
-        if (jobs[i].id == job_id && jobs[i].status == STOPPED) {
+        if (jobs[i].id == job_id && jobs[i].status != DONE) {
             found = 1;
             if(tcsetpgrp(STDIN_FILENO, jobs[i].pgid) == -1) {
                 perror("tcsetpgrp failed.");
@@ -167,7 +167,33 @@ static int builtin_fg(char **argv) {
 }
 
 static int builtin_bg(char ** argv) {
-    
+    if (argv[1] == NULL) {
+        fprintf(stderr, "bg: missing job id\n");
+        return EXIT_FAILURE;
+    }
+
+    int job_id = atoi(argv[1] + 1) - 1;
+    int found = 0;
+
+    for (int i = 0; i < num_jobs; i++) {
+        if (jobs[i].id == job_id && jobs[i].status == STOPPED) {
+            found = 1;
+
+            if (kill(-jobs[i].pgid, SIGCONT) == -1) {
+                perror("kill failed.");
+                return EXIT_FAILURE;
+            }
+
+            jobs[i].status = RUNNING;
+            printf("[%d] %s\n", jobs[i].id + 1, jobs[i].command);
+        }
+    }
+
+    if (!found) {
+        fprintf(stderr, "bg: job %d not found\n", job_id + 1);
+    }
+
+    return EXIT_SUCCESS;
 }
 
 int execute_builtin(char** argv) {
